@@ -1,0 +1,71 @@
+{
+    "name": "jeffersongoncalves/laravel-auto-translate",
+    "description": "Queued machine translation for Laravel translatable model attributes (spatie/laravel-translatable). Ships a free, keyless MyMemory driver that protects product names, vendor/package ids and code from being translated, splits long text under the request limit, and never saves a quota warning as a translation.",
+    "keywords": [
+        "jeffersongoncalves",
+        "laravel",
+        "laravel-auto-translate",
+        "translation",
+        "translatable",
+        "mymemory"
+    ],
+    "homepage": "https://github.com/jeffersongoncalves/laravel-auto-translate",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jefferson Gonçalves",
+            "email": "gerson.simao.92@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "spatie/laravel-package-tools": "^1.14"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.32",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "pestphp/pest": "^3.7.4|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+        "spatie/laravel-translatable": "^6.0"
+    },
+    "suggest": {
+        "spatie/laravel-translatable": "Its HasTranslations trait implements the AutoTranslatable contract's translation methods."
+    },
+    "autoload": {
+        "psr-4": {
+            "JeffersonGoncalves\\AutoTranslate\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JeffersonGoncalves\\AutoTranslate\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": "@php ./vendor/bin/testbench package:discover --ansi",
+        "analyse": "vendor/bin/phpstan analyse",
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "phpstan/extension-installer": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "JeffersonGoncalves\\AutoTranslate\\AutoTranslateServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
