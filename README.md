@@ -38,6 +38,13 @@ return [
     'queue' => env('AUTO_TRANSLATE_QUEUE'),
     'connection' => env('AUTO_TRANSLATE_QUEUE_CONNECTION'),
 
+    // Each translation is remembered per text + locale pair, so it never spends the quota twice.
+    'cache' => [
+        'enabled' => env('AUTO_TRANSLATE_CACHE', true),
+        'store' => env('AUTO_TRANSLATE_CACHE_STORE'), // null = default store
+        'ttl' => 60 * 60 * 24 * 30, // seconds, null = forever
+    ],
+
     // Kept verbatim. `code`, vendor/package ids and CamelCase identifiers are always protected.
     'protected_terms' => ['Laravel', 'Laravel Zero', 'Filament', 'Livewire', /* ... */],
 
@@ -106,6 +113,8 @@ use JeffersonGoncalves\AutoTranslate\Contracts\Translator;
 
 $this->app->bind(Translator::class, DeepLTranslator::class);
 ```
+
+Your translator is still wrapped by the cache (disable it with `auto-translate.cache.enabled`).
 
 ```php
 interface Translator

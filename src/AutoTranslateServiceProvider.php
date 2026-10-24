@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace JeffersonGoncalves\AutoTranslate;
 
 use JeffersonGoncalves\AutoTranslate\Contracts\Translator;
+use JeffersonGoncalves\AutoTranslate\Translators\CachingTranslator;
 use JeffersonGoncalves\AutoTranslate\Translators\MyMemoryTranslator;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -22,5 +23,10 @@ class AutoTranslateServiceProvider extends PackageServiceProvider
     {
         // bindIf: an app binding its own Translator (DeepL, LibreTranslate…) wins.
         $this->app->bindIf(Translator::class, MyMemoryTranslator::class);
+
+        // extend() also wraps a Translator the app binds itself.
+        $this->app->extend(Translator::class, fn (Translator $translator): Translator => config('auto-translate.cache.enabled', true)
+            ? new CachingTranslator($translator)
+            : $translator);
     }
 }

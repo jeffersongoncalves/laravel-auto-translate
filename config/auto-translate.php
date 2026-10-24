@@ -18,6 +18,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cache
+    |--------------------------------------------------------------------------
+    |
+    | Each translation is remembered by source text + locale pair, so the same
+    | text never spends the provider's quota twice. `ttl` in seconds (null =
+    | forever), `store` null uses the default cache store.
+    |
+    */
+
+    'cache' => [
+        'enabled' => env('AUTO_TRANSLATE_CACHE', true),
+        'store' => env('AUTO_TRANSLATE_CACHE_STORE'),
+        'ttl' => 60 * 60 * 24 * 30,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Protected terms
     |--------------------------------------------------------------------------
     |

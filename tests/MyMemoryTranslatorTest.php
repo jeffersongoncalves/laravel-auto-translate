@@ -3,10 +3,40 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use JeffersonGoncalves\AutoTranslate\Contracts\Translator;
+use JeffersonGoncalves\AutoTranslate\Translators\CachingTranslator;
 use JeffersonGoncalves\AutoTranslate\Translators\MyMemoryTranslator;
 
-it('is the default Translator binding', function () {
+it('is the default Translator binding, behind the cache', function () {
+    expect(app(Translator::class))->toBeInstanceOf(CachingTranslator::class);
+
+    config(['auto-translate.cache.enabled' => false]);
+    app()->forgetInstance(Translator::class);
+
     expect(app(Translator::class))->toBeInstanceOf(MyMemoryTranslator::class);
+});
+
+it('caches each translation by text and locale pair, never a failure', function () {
+    $calls = 0;
+    Http::fake(['api.mymemory.translated.net/*' => function (Request $request) use (&$calls) {
+        $calls++;
+
+        return $request['q'] === 'Boom'
+            ? Http::response(myMemoryResponse('MYMEMORY WARNING: quota', 429))
+            : Http::response(myMemoryResponse('Olá'));
+    }]);
+
+    $translator = app(Translator::class);
+
+    expect($translator->translate('Hello', 'en', 'pt'))->toBe('Olá')
+        ->and($translator->translate('Hello', 'en', 'pt'))->toBe('Olá');
+    expect($calls)->toBe(1);
+
+    $translator->translate('Hello', 'en', 'de');
+    expect($calls)->toBe(2);
+
+    expect(fn () => $translator->translate('Boom', 'en', 'pt'))->toThrow(RuntimeException::class)
+        ->and(fn () => $translator->translate('Boom', 'en', 'pt'))->toThrow(RuntimeException::class);
+    expect($calls)->toBe(4);
 });
 
 it('translates through MyMemory, mapping pt to pt-BR and decoding entities', function () {
