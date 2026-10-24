@@ -91,3 +91,14 @@ it('sends text over the 500-byte request limit sentence by sentence', function (
     Http::assertSentCount(3);
     Http::assertSent(fn (Request $request): bool => strlen($request['q']) <= 450);
 });
+
+it('cuts a single sentence over the limit between words', function () {
+    Http::fake(['api.mymemory.translated.net/*' => fn (Request $request) => Http::response(myMemoryResponse($request['q']))]);
+
+    $text = trim(str_repeat('word ', 200)); // ~1000 bytes, no sentence break
+
+    expect((new MyMemoryTranslator)->translate($text, 'en', 'fr'))->toBe($text);
+
+    Http::assertSentCount(3);
+    Http::assertNotSent(fn (Request $request): bool => strlen($request['q']) > 450);
+});

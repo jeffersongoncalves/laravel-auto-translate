@@ -100,18 +100,21 @@ final class MyMemoryTranslator implements Translator
         $current = '';
 
         foreach (preg_split('/(?<=[.!?])\s+/', $text) ?: [$text] as $sentence) {
-            if ($current !== '' && strlen($current.' '.$sentence) > self::MAX_BYTES) {
-                $chunks[] = $current;
-                $current = $sentence;
-            } else {
-                $current = $current === '' ? $sentence : $current.' '.$sentence;
+            // A sentence over the limit on its own is cut between words.
+            foreach (strlen($sentence) > self::MAX_BYTES ? explode("\n", wordwrap($sentence, self::MAX_BYTES, "\n")) : [$sentence] as $piece) {
+                if ($current !== '' && strlen($current.' '.$piece) > self::MAX_BYTES) {
+                    $chunks[] = $current;
+                    $current = $piece;
+                } else {
+                    $current = $current === '' ? $piece : $current.' '.$piece;
+                }
             }
         }
 
         $chunks[] = $current;
 
-        // ponytail: a single sentence over 450 bytes still goes in one request;
-        // MyMemory rejects it and the translation fails.
+        // ponytail: a single word over 450 bytes (a URL, say) still goes in one
+        // request; MyMemory rejects it and the translation fails.
         return $chunks;
     }
 
