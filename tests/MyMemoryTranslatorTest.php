@@ -3,6 +3,7 @@
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use JeffersonGoncalves\AutoTranslate\Contracts\Translator;
+use JeffersonGoncalves\AutoTranslate\Exceptions\QuotaExceededException;
 use JeffersonGoncalves\AutoTranslate\Translators\CachingTranslator;
 use JeffersonGoncalves\AutoTranslate\Translators\MyMemoryTranslator;
 
@@ -79,7 +80,37 @@ it('treats the quota warning MyMemory returns as a failure, never as a translati
     Http::fake(['api.mymemory.translated.net/*' => Http::response(myMemoryResponse('MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY', 429))]);
 
     (new MyMemoryTranslator)->translate('Hello', 'en', 'de');
-})->throws(RuntimeException::class);
+})->throws(QuotaExceededException::class);
+
+it('reads the quota reset delay from the warning', function () {
+    Http::fake(['api.mymemory.translated.net/*' => Http::response(myMemoryResponse('MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY. NEXT AVAILABLE IN 02 HOURS 52 MINUTES 24 SECONDS', 429))]);
+
+    try {
+        (new MyMemoryTranslator)->translate('Hello', 'en', 'de');
+    } catch (QuotaExceededException $e) {
+    }
+
+    expect($e->retryAfter)->toBe(2 * 3600 + 52 * 60 + 24);
+});
+
+it('waits until the next midnight UTC when the warning has no reset time', function () {
+    $this->travelTo(now('UTC')->setTime(23, 0));
+    Http::fake(['api.mymemory.translated.net/*' => Http::response(myMemoryResponse('MYMEMORY WARNING: quota', 429))]);
+
+    try {
+        (new MyMemoryTranslator)->translate('Hello', 'en', 'de');
+    } catch (QuotaExceededException $e) {
+    }
+
+    expect($e->retryAfter)->toBe(3600);
+});
+
+it('treats other HTTP errors as plain failures', function () {
+    Http::fake(['api.mymemory.translated.net/*' => Http::response(['responseStatus' => 500, 'responseDetails' => 'boom'], 500)]);
+
+    expect(fn () => (new MyMemoryTranslator)->translate('Hello', 'en', 'de'))
+        ->toThrow(fn (RuntimeException $e) => expect($e)->not->toBeInstanceOf(QuotaExceededException::class));
+});
 
 it('sends text over the 500-byte request limit sentence by sentence', function () {
     Http::fake(['api.mymemory.translated.net/*' => Http::response(myMemoryResponse('ok.'))]);

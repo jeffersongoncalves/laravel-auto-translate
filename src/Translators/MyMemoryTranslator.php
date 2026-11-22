@@ -6,6 +6,7 @@ namespace JeffersonGoncalves\AutoTranslate\Translators;
 
 use Illuminate\Support\Facades\Http;
 use JeffersonGoncalves\AutoTranslate\Contracts\Translator;
+use JeffersonGoncalves\AutoTranslate\Exceptions\QuotaExceededException;
 use RuntimeException;
 
 /**
@@ -74,17 +75,34 @@ final class MyMemoryTranslator implements Translator
             ]));
 
         $translated = (string) $response->json('responseData.translatedText', '');
+        $warning = implode(' ', array_filter([$translated, $response->json('responseDetails')], 'is_string'));
 
         // Quota/limit errors can come back as HTTP 200, with the warning as
         // the "translation" — never return that text.
+        if (str_contains($warning, 'MYMEMORY WARNING')) {
+            throw new QuotaExceededException('MyMemory quota exceeded: '.trim($warning), self::retryAfter($warning));
+        }
+
         if (! $response->successful()
             || (int) $response->json('responseStatus') !== 200
-            || $translated === ''
-            || str_contains($translated, 'MYMEMORY WARNING')) {
+            || $translated === '') {
             throw new RuntimeException('MyMemory translation failed: '.($response->json('responseDetails') ?: $response->status()));
         }
 
         return html_entity_decode($translated, ENT_QUOTES | ENT_HTML5);
+    }
+
+    /**
+     * Seconds until the quota resets, from "NEXT AVAILABLE IN 02 HOURS 52
+     * MINUTES 24 SECONDS"; without it, until the next midnight UTC.
+     */
+    private static function retryAfter(string $warning): int
+    {
+        if (preg_match('/NEXT AVAILABLE IN (\d+) HOURS? (\d+) MINUTES? (\d+) SECONDS?/i', $warning, $m)) {
+            return (int) $m[1] * 3600 + (int) $m[2] * 60 + (int) $m[3];
+        }
+
+        return 86400 - now()->getTimestamp() % 86400;
     }
 
     /**

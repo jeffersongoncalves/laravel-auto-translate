@@ -43,6 +43,7 @@ TranslateAttributeJob::dispatch($post, 'title', 'en', ['pt', 'es', 'fr', 'de']);
 ### Conventions
 - The app decides when to dispatch (usually an observer). Guard against the job's own save re-dispatching: compare a hash stored in `autoTranslated()`, or only target empty locales.
 - If one locale fails, the others are saved, `autoTranslated()` is skipped and the job throws so it retries.
+- On `QuotaExceededException` the job stops, saves what it translated and `release()`s itself for `$e->retryAfter` seconds (no try spent; `retryUntil()` 3 days, `maxExceptions` 3).
 - Product names that must not be translated go in `config('auto-translate.protected_terms')`; `code`, `vendor/package` ids and CamelCase identifiers are always protected.
 - Another provider: bind your own `Contracts\Translator`; it is still wrapped by the cache (`auto-translate.cache.enabled`).
 - In tests, swap the driver with `app()->instance(Translator::class, $fake)` or `Http::fake(['api.mymemory.translated.net/*' => ...])`.

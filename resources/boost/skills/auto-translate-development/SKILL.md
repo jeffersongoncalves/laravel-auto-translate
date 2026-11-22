@@ -31,7 +31,7 @@ src/
     AutoTranslatable.php             # getTranslation(), setTranslation(), autoTranslated()
     Translator.php                   # translate($text, $from, $to): string, throws RuntimeException
   Jobs/
-    TranslateAttributeJob.php        # (model, attribute, source, targets); tries 3, backoff 60/300
+    TranslateAttributeJob.php        # (model, attribute, source, targets); maxExceptions 3, backoff 60/300, retryUntil 3 days; quota → release
   Translators/
     MyMemoryTranslator.php           # Protects terms, chunks text, rejects quota warnings
     CachingTranslator.php            # Cache::remember per text + locale pair
@@ -46,7 +46,7 @@ config/
 3. If all succeeded, `$model->autoTranslated($attribute, $source)` runs (store a hash there).
 4. The model is saved if dirty, then the job throws when any locale failed, so it is retried.
 
-`MyMemoryTranslator` masks protected terms, `code`, `vendor/package` ids and CamelCase identifiers as `T0X` placeholders before the request and restores them after. Text over 450 bytes is split by sentence. A `MYMEMORY WARNING` response (quota) is an exception, never a translation.
+`MyMemoryTranslator` masks protected terms, `code`, `vendor/package` ids and CamelCase identifiers as `T0X` placeholders before the request and restores them after. Text over 450 bytes is split by sentence. A `MYMEMORY WARNING` response (quota) throws `QuotaExceededException` (with `retryAfter` seconds parsed from the warning), never a translation.
 
 ## Adding a provider
 
