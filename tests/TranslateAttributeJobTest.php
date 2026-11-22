@@ -84,6 +84,26 @@ it('saves the locales translated before the quota ran out, then releases', funct
         ->and($post->title_hash)->toBeNull();
 });
 
+it('rethrows the quota on the sync driver after saving what it translated', function () {
+    fakeTranslator(quota: ['de']);
+    $post = Post::create(['title' => ['en' => 'Hello']]);
+
+    expect(fn () => TranslateAttributeJob::dispatchSync($post, 'title', 'en', ['pt', 'de']))
+        ->toThrow(QuotaExceededException::class);
+
+    expect($post->refresh()->getTranslations('title'))->toBe(['en' => 'Hello', 'pt' => '[pt] Hello']);
+});
+
+it('fails normally instead of releasing when a real error came before the quota', function () {
+    $translator = fakeTranslator(failing: ['pt'], quota: ['de']);
+    $post = Post::create(['title' => ['en' => 'Hello']]);
+
+    $job = (new TranslateAttributeJob($post, 'title', 'en', ['pt', 'de']))->withFakeQueueInteractions();
+
+    expect(fn () => $job->handle($translator))->toThrow(RuntimeException::class, 'Translation failed for pt: no pt');
+    $job->assertNotReleased();
+});
+
 it('bounds quota waits by time and real errors by exception count', function () {
     $job = new TranslateAttributeJob(Post::create(['title' => ['en' => 'Hello']]), 'title', 'en', ['pt']);
 

@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use JeffersonGoncalves\AutoTranslate\Contracts\AutoTranslatable;
@@ -83,7 +84,13 @@ class TranslateAttributeJob implements ShouldQueue
 
         // ponytail: the retry re-runs every target; the translation cache keeps
         // the locales already done from spending the quota again.
-        if ($quota !== null) {
+        // Real failures take the normal exception path (counted, with backoff).
+        if ($quota !== null && $failed === []) {
+            // Sync driver or a direct call has no queue to release onto.
+            if ($this->job === null || $this->job instanceof SyncJob) {
+                throw $quota;
+            }
+
             $this->release($quota->retryAfter);
 
             return;
