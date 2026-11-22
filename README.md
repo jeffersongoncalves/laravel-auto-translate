@@ -102,7 +102,9 @@ public function saved(Post $post): void
 
 The job's own save fires the observer again. The hash written in `autoTranslated()` stops it from dispatching a second time.
 
-If one locale fails, the others are still saved, `autoTranslated()` is skipped and the job fails, so it is retried (3 tries, 60s and 300s backoff).
+If one locale fails, the others are still saved, `autoTranslated()` is skipped and the job fails, so it is retried (3 exceptions, 60s and 300s backoff).
+
+When MyMemory's daily quota runs out, the job stops calling it for the remaining locales, saves the ones already translated and releases itself until the quota resets (read from `NEXT AVAILABLE IN hh HOURS mm MINUTES ss SECONDS`, else next midnight UTC). Those waits don't count as failures; the job gives up 3 days after dispatch.
 
 ### Another translation service
 
